@@ -36,7 +36,7 @@ function createSetter() {
     // 利用 Reflect.set 设置新值
     const result = Reflect.set(target, key, value, receiver)
     // 触发依赖
-    trigger(target, key, value)
+    trigger(target, key)
     return result
   }
 }
