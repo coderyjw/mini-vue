@@ -1,5 +1,5 @@
 import { Dep, createDep } from './dep'
-
+import { isArray } from '@vue/shared'
 /**
  * 单例的，当前的 effect
  */
@@ -95,7 +95,7 @@ export function trigger(target: object, key?: unknown) {
  */
 export function triggerEffects(dep: Dep) {
   // 把 dep 构建为一个数组
-  const effects = Array.isArray(dep) ? dep : [...dep]
+  const effects = isArray(dep) ? dep : [...dep]
   // 依次触发
   for (const effect of effects) {
     triggerEffect(effect)
