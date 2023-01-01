@@ -180,7 +180,7 @@ var Vue = (function (exports) {
         // 把 dep 构建为一个数组
         var effects = isArray(dep) ? dep : __spreadArray([], __read(dep), false);
         try {
-            // 依次触发
+            // 不在依次触发，而是先触发所有的计算属性依赖，再触发所有的非计算属性依赖
             for (var effects_1 = __values(effects), effects_1_1 = effects_1.next(); !effects_1_1.done; effects_1_1 = effects_1.next()) {
                 var effect_1 = effects_1_1.value;
                 triggerEffect(effect_1);
@@ -193,6 +193,16 @@ var Vue = (function (exports) {
             }
             finally { if (e_1) throw e_1.error; }
         }
+        // for (const effect of effects) {
+        //   if (effect.computed) {
+        //     triggerEffect(effect)
+        //   }
+        // }
+        // for (const effect of effects) {
+        //   if (!effect.computed) {
+        //     triggerEffect(effect)
+        //   }
+        // }
     }
     /**
      * 触发指定的依赖
