@@ -1,5 +1,7 @@
-import { Dep, createDep } from './dep'
 import { isArray } from '@vue/shared'
+
+import { Dep, createDep } from './dep'
+import { ComputedRefImpl } from './computed'
 /**
  * 单例的，当前的 effect
  */
@@ -9,6 +11,11 @@ export let activeEffect: ReactiveEffect | undefined
  * 响应性触发依赖时的执行类
  */
 export class ReactiveEffect<T = any> {
+  /**
+   * 存在该属性，则表示当前的 effect 为计算属性的 effect
+   */
+  computed?: ComputedRefImpl<T>
+
   constructor(public fn: () => T) {}
 
   run() {
