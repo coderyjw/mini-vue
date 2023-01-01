@@ -94,8 +94,10 @@ var Vue = (function (exports) {
      * 响应性触发依赖时的执行类
      */
     var ReactiveEffect = /** @class */ (function () {
-        function ReactiveEffect(fn) {
+        function ReactiveEffect(fn, scheduler) {
+            if (scheduler === void 0) { scheduler = null; }
             this.fn = fn;
+            this.scheduler = scheduler;
         }
         ReactiveEffect.prototype.run = function () {
             // 为 activeEffect 赋值
@@ -196,7 +198,14 @@ var Vue = (function (exports) {
      * 触发指定的依赖
      */
     function triggerEffect(effect) {
-        effect.run();
+        // 存在调度器就执行调度函数
+        if (effect.scheduler) {
+            effect.scheduler();
+        }
+        // 否则直接执行 run 函数即可
+        else {
+            effect.run();
+        }
     }
 
     /**
@@ -364,17 +373,33 @@ var Vue = (function (exports) {
      */
     var ComputedRefImpl = /** @class */ (function () {
         function ComputedRefImpl(getter) {
+            var _this = this;
             this.dep = undefined;
             this.__v_isRef = true;
-            this.effect = new ReactiveEffect(getter);
+            /**
+             * 脏：为 false 时，表示需要触发依赖。为 true 时表示需要重新执行 run 方法，获取数据。即：数据脏了
+             */
+            this._dirty = true;
+            this.effect = new ReactiveEffect(getter, function () {
+                // 判断当前脏的状态，如果为 false，表示需要《触发依赖》
+                if (!_this._dirty) {
+                    // 将脏置为 true，表示
+                    _this._dirty = true;
+                    triggerRefValue(_this);
+                }
+            });
             this.effect.computed = this;
         }
         Object.defineProperty(ComputedRefImpl.prototype, "value", {
             get: function () {
                 // 触发依赖
                 trackRefValue(this);
-                // 执行 run 函数
-                this._value = this.effect.run();
+                // 判断当前脏的状态，如果为 true ，则表示需要重新执行 run，获取最新数据
+                if (this._dirty) {
+                    this._dirty = false;
+                    // 执行 run 函数
+                    this._value = this.effect.run();
+                }
                 // 返回计算之后的真实值
                 return this._value;
             },
