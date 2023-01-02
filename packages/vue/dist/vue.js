@@ -81,6 +81,10 @@ var Vue = (function (exports) {
      * Object.assign
      */
     var extend = Object.assign;
+    /**
+     * 只读的空对象
+     */
+    var EMPTY_OBJ = {};
 
     /**
      * 依据 effects 生成 dep 实例
@@ -109,6 +113,7 @@ var Vue = (function (exports) {
             // 执行 fn 函数
             return this.fn();
         };
+        ReactiveEffect.prototype.stop = function () { };
         return ReactiveEffect;
     }());
     /**
@@ -303,6 +308,8 @@ var Vue = (function (exports) {
         }
         // 未被代理则生成 proxy 实例
         var proxy = new Proxy(target, baseHandlers);
+        // 为 Reactive 增加标记
+        proxy["__v_isReactive" /* ReactiveFlags.IS_REACTIVE */] = true;
         // 缓存代理对象
         proxyMap.set(target, proxy);
         return proxy;
@@ -313,6 +320,12 @@ var Vue = (function (exports) {
     var toReactive = function (value) {
         return isObject(value) ? reactive(value) : value;
     };
+    /**
+     * 判断一个数据是否为 Reactive
+     */
+    function isReactive(value) {
+        return !!(value && value["__v_isReactive" /* ReactiveFlags.IS_REACTIVE */]);
+    }
 
     /**
      * ref 函数
@@ -504,11 +517,74 @@ var Vue = (function (exports) {
         }
     }
 
+    /**
+     * 指定的 watch 函数
+     * @param source 监听的响应性数据
+     * @param cb 回调函数
+     * @param options 配置对象
+     * @returns
+     */
+    function watch(source, cb, options) {
+        return doWatch(source, cb, options);
+    }
+    function doWatch(source, cb, _a) {
+        var _b = _a === void 0 ? EMPTY_OBJ : _a, immediate = _b.immediate, deep = _b.deep;
+        // 触发 getter 的指定函数
+        var getter;
+        // 判断 source 的数据类型
+        if (isReactive(source)) {
+            // 指定 getter
+            getter = function () { return source; };
+            // 深度
+            deep = true;
+        }
+        else {
+            getter = function () { };
+        }
+        // 存在回调函数和deep
+        if (cb && deep) {
+            // TODO
+            var baseGetter_1 = getter;
+            getter = function () { return baseGetter_1(); };
+        }
+        // 旧值
+        var oldValue = {};
+        // job 执行方法
+        var job = function () {
+            if (cb) {
+                // watch(source, cb)
+                var newValue = effect.run();
+                if (deep || hasChanged(newValue, oldValue)) {
+                    cb(newValue, oldValue);
+                    oldValue = newValue;
+                }
+            }
+        };
+        // 调度器
+        var scheduler = function () { return queuePreFlushCb(job); };
+        var effect = new ReactiveEffect(getter, scheduler);
+        if (cb) {
+            if (immediate) {
+                job();
+            }
+            else {
+                oldValue = effect.run();
+            }
+        }
+        else {
+            effect.run();
+        }
+        return function () {
+            effect.stop();
+        };
+    }
+
     exports.computed = computed;
     exports.effect = effect;
     exports.queuePreFlushCb = queuePreFlushCb;
     exports.reactive = reactive;
     exports.ref = ref;
+    exports.watch = watch;
 
     Object.defineProperty(exports, '__esModule', { value: true });
 
