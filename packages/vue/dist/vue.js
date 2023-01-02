@@ -77,6 +77,10 @@ var Vue = (function (exports) {
     var isFunction = function (val) {
         return typeof val === 'function';
     };
+    /**
+     * Object.assign
+     */
+    var extend = Object.assign;
 
     /**
      * 依据 effects 生成 dep 实例
@@ -112,11 +116,18 @@ var Vue = (function (exports) {
      * @param fn 执行方法
      * @returns 以 ReactiveEffect 实例为 this 的执行函数
      */
-    function effect(fn) {
+    function effect(fn, options) {
         // 生成 ReactiveEffect 实例
         var _effect = new ReactiveEffect(fn);
-        // 执行 run 函数
-        _effect.run();
+        // 存在 options，则合并配置对象
+        if (options) {
+            extend(_effect, options);
+        }
+        // !options.lazy 时
+        if (!options || !options.lazy) {
+            // 执行 run 函数
+            _effect.run();
+        }
     }
     /**
      * 收集所有依赖的 WeakMap 实例：
@@ -176,14 +187,16 @@ var Vue = (function (exports) {
      * 依次触发 dep 中保存的依赖
      */
     function triggerEffects(dep) {
-        var e_1, _a;
+        var e_1, _a, e_2, _b;
         // 把 dep 构建为一个数组
         var effects = isArray(dep) ? dep : __spreadArray([], __read(dep), false);
         try {
             // 不在依次触发，而是先触发所有的计算属性依赖，再触发所有的非计算属性依赖
             for (var effects_1 = __values(effects), effects_1_1 = effects_1.next(); !effects_1_1.done; effects_1_1 = effects_1.next()) {
                 var effect_1 = effects_1_1.value;
-                triggerEffect(effect_1);
+                if (effect_1.computed) {
+                    triggerEffect(effect_1);
+                }
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
@@ -193,16 +206,21 @@ var Vue = (function (exports) {
             }
             finally { if (e_1) throw e_1.error; }
         }
-        // for (const effect of effects) {
-        //   if (effect.computed) {
-        //     triggerEffect(effect)
-        //   }
-        // }
-        // for (const effect of effects) {
-        //   if (!effect.computed) {
-        //     triggerEffect(effect)
-        //   }
-        // }
+        try {
+            for (var effects_2 = __values(effects), effects_2_1 = effects_2.next(); !effects_2_1.done; effects_2_1 = effects_2.next()) {
+                var effect_2 = effects_2_1.value;
+                if (!effect_2.computed) {
+                    triggerEffect(effect_2);
+                }
+            }
+        }
+        catch (e_2_1) { e_2 = { error: e_2_1 }; }
+        finally {
+            try {
+                if (effects_2_1 && !effects_2_1.done && (_b = effects_2.return)) _b.call(effects_2);
+            }
+            finally { if (e_2) throw e_2.error; }
+        }
     }
     /**
      * 触发指定的依赖
@@ -433,8 +451,62 @@ var Vue = (function (exports) {
         return cRef;
     }
 
+    // 对应 promise 的 pending 状态
+    var isFlushPending = false;
+    /**
+     * promise.resolve()
+     */
+    var resolvedPromise = Promise.resolve();
+    /**
+     * 待执行的任务队列
+     */
+    var pendingPreFlushCbs = [];
+    /**
+     * 队列预处理函数
+     */
+    function queuePreFlushCb(cb) {
+        queueCb(cb, pendingPreFlushCbs);
+    }
+    /**
+     * 队列处理函数
+     */
+    function queueCb(cb, pendingQueue) {
+        // 将所有的回调函数，放入队列中
+        pendingQueue.push(cb);
+        queueFlush();
+    }
+    /**
+     * 依次处理队列中执行函数
+     */
+    function queueFlush() {
+        if (!isFlushPending) {
+            isFlushPending = true;
+            resolvedPromise.then(flushJobs);
+        }
+    }
+    /**
+     * 处理队列
+     */
+    function flushJobs() {
+        isFlushPending = false;
+        flushPreFlushCbs();
+    }
+    /**
+     * 依次处理队列中的任务
+     */
+    function flushPreFlushCbs() {
+        if (pendingPreFlushCbs.length) {
+            var activePreFlushCbs = __spreadArray([], __read(new Set(pendingPreFlushCbs)), false);
+            pendingPreFlushCbs.length = 0;
+            for (var i = 0; i < activePreFlushCbs.length; i++) {
+                activePreFlushCbs[i]();
+            }
+        }
+    }
+
     exports.computed = computed;
     exports.effect = effect;
+    exports.queuePreFlushCb = queuePreFlushCb;
     exports.reactive = reactive;
     exports.ref = ref;
 

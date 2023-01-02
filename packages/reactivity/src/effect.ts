@@ -1,4 +1,4 @@
-import { isArray } from '@vue/shared'
+import { isArray, extend } from '@vue/shared'
 
 import { Dep, createDep } from './dep'
 import { ComputedRefImpl } from './computed'
@@ -32,16 +32,29 @@ export class ReactiveEffect<T = any> {
   }
 }
 
+export interface ReactiveEffectOptions {
+  lazy?: boolean
+  scheduler?: EffectScheduler
+}
+
 /**
  * effect 函数
  * @param fn 执行方法
  * @returns 以 ReactiveEffect 实例为 this 的执行函数
  */
-export function effect<T = any>(fn: () => T) {
+export function effect<T = any>(fn: () => T, options?: ReactiveEffectOptions) {
   // 生成 ReactiveEffect 实例
   const _effect = new ReactiveEffect(fn)
-  // 执行 run 函数
-  _effect.run()
+
+  // 存在 options，则合并配置对象
+  if (options) {
+    extend(_effect, options)
+  }
+  // !options.lazy 时
+  if (!options || !options.lazy) {
+    // 执行 run 函数
+    _effect.run()
+  }
 }
 
 type KeyToDepMap = Map<any, Dep>
@@ -109,9 +122,6 @@ export function triggerEffects(dep: Dep) {
   // 把 dep 构建为一个数组
   const effects = isArray(dep) ? dep : [...dep]
   // 不在依次触发，而是先触发所有的计算属性依赖，再触发所有的非计算属性依赖
-  // for (const effect of effects) {
-  //   triggerEffect(effect)
-  // }
   for (const effect of effects) {
     if (effect.computed) {
       triggerEffect(effect)
