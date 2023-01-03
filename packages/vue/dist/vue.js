@@ -78,6 +78,10 @@ var Vue = (function (exports) {
         return typeof val === 'function';
     };
     /**
+     * 是否为一个 String
+     */
+    var isString = function (val) { return typeof val === 'string'; };
+    /**
      * Object.assign
      */
     var extend = Object.assign;
@@ -591,8 +595,92 @@ var Vue = (function (exports) {
         return value;
     }
 
+    function isVNode(value) {
+        return value ? value.__v_isVNode === true : false;
+    }
+    /**
+     * 生成一个 VNode 对象，并返回
+     * @param type vnode.type
+     * @param props 标签属性或自定义属性
+     * @param children 子节点
+     * @returns vnode 对象
+     */
+    function createVNode(type, props, children) {
+        // 通过 bit 位处理 shapeFlag 类型
+        var shapeFlag = isString(type) ? 1 /* ShapeFlags.ELEMENT */ : 0;
+        return createBaseVNode(type, props, children, shapeFlag);
+    }
+    /**
+     * 构建基础 vnode
+     */
+    function createBaseVNode(type, props, children, shapeFlag) {
+        var vnode = {
+            __v_isVNode: true,
+            type: type,
+            props: props,
+            shapeFlag: shapeFlag
+        };
+        normalizeChildren(vnode, children);
+        return vnode;
+    }
+    function normalizeChildren(vnode, children) {
+        var type = 0;
+        vnode.shapeFlag;
+        if (children == null) {
+            children = null;
+        }
+        else if (isArray(children)) ;
+        else if (typeof children === 'object') ;
+        else if (isFunction(children)) ;
+        else {
+            // children 为 string
+            children = String(children);
+            // 为 type 指定 Flags
+            type = 8 /* ShapeFlags.TEXT_CHILDREN */;
+        }
+        // 修改 vnode 的 chidlren
+        vnode.children = children;
+        // 按位或赋值
+        vnode.shapeFlag |= type;
+    }
+
+    function h(type, propsOrChildren, children) {
+        // 获取用户传递的参数数量
+        var l = arguments.length;
+        // 如果用户只传递了两个参数，那么证明第二个参数可能是 props , 也可能是 children
+        if (l === 2) {
+            // 如果 第二个参数是对象，但不是数组。则第二个参数只有两种可能性：1. VNode 2.普通的 props
+            if (isObject(propsOrChildren) && !isArray(propsOrChildren)) {
+                // 如果是 VNode，则 第二个参数代表了 children
+                if (isVNode(propsOrChildren)) {
+                    return createVNode(type, null, [propsOrChildren]);
+                }
+                // 如果不是 VNode， 则第二个参数代表了 props
+                return createVNode(type, propsOrChildren, []);
+            }
+            // 如果第二个参数不是单纯的 object，则 第二个参数代表了 props
+            else {
+                return createVNode(type, null, propsOrChildren);
+            }
+        }
+        // 如果用户传递了三个或以上的参数，那么证明第二个参数一定代表了 props
+        else {
+            // 如果参数在三个以上，则从第二个参数开始，把后续所有参数都作为 children
+            if (l > 3) {
+                children = Array.prototype.slice.call(arguments, 2);
+            }
+            // 如果传递的参数只有三个，则 children 是单纯的 children
+            else if (l === 3 && isVNode(children)) {
+                children = [children];
+            }
+            // 触发 createVNode 方法，创建 VNode 实例
+            return createVNode(type, propsOrChildren, children);
+        }
+    }
+
     exports.computed = computed;
     exports.effect = effect;
+    exports.h = h;
     exports.queuePreFlushCb = queuePreFlushCb;
     exports.reactive = reactive;
     exports.ref = ref;

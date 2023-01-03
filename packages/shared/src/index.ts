@@ -1,3 +1,4 @@
+export * from './shapeFlags'
 /**
  * 判断是否为一个数组
  */
@@ -20,6 +21,11 @@ export const hasChanged = (value: any, oldValue: any): boolean =>
  */
 export const isFunction = (val: unknown): val is Function =>
   typeof val === 'function'
+
+/**
+ * 是否为一个 String
+ */
+export const isString = (val: unknown): val is string => typeof val === 'string'
 
 /**
  * Object.assign
