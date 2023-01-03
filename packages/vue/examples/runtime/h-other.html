@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="../../dist/vue.js"></script>
+  </head>
+  <body>
+    <div id="app1"></div>
+    <div id="app2"></div>
+    <div id="app3"></div>
+<script>
+  const { h, Text, Comment, Fragment } = Vue
+  const vnodeText = h(Text, '这是一个 Text')
+  console.log(vnodeText)
+  // 可以通过 render 进行渲染
+  // render(vnodeText, document.querySelector('#app1'))
+
+  const vnodeComment = h(Comment, '这是一个 Comment')
+  console.log(vnodeComment)
+  // render(vnodeComment, document.querySelector('#app2'))
+
+  const vnodeFragment = h(Fragment, '这是一个 Fragment')
+  console.log(vnodeFragment)
+  // render(vnodeFragment, document.querySelector('#app3'))
+</script>
+  </body>
+</html>

@@ -1,4 +1,10 @@
-import { ShapeFlags, isArray, isFunction, isString } from '@vue/shared'
+import {
+  ShapeFlags,
+  isArray,
+  isFunction,
+  isString,
+  isObject
+} from '@vue/shared'
 
 export interface VNode {
   __v_isVNode: true
@@ -7,6 +13,10 @@ export interface VNode {
   children: any
   shapeFlag: number
 }
+
+export const Fragment = Symbol('Fragment')
+export const Text = Symbol('Text')
+export const Comment = Symbol('Comment')
 
 export function isVNode(value: any): value is VNode {
   return value ? value.__v_isVNode === true : false
@@ -21,7 +31,11 @@ export function isVNode(value: any): value is VNode {
  */
 export function createVNode(type, props, children): VNode {
   // 通过 bit 位处理 shapeFlag 类型
-  const shapeFlag = isString(type) ? ShapeFlags.ELEMENT : 0
+  const shapeFlag = isString(type)
+    ? ShapeFlags.ELEMENT
+    : isObject(type)
+    ? ShapeFlags.STATEFUL_COMPONENT
+    : 0
 
   return createBaseVNode(type, props, children, shapeFlag)
 }
@@ -49,6 +63,7 @@ export function normalizeChildren(vnode: VNode, children: unknown) {
     children = null
   } else if (isArray(children)) {
     // TODO: array
+    type = ShapeFlags.ARRAY_CHILDREN
   } else if (typeof children === 'object') {
     // TODO: object
   } else if (isFunction(children)) {

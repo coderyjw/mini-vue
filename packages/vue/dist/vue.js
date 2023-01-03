@@ -595,6 +595,9 @@ var Vue = (function (exports) {
         return value;
     }
 
+    var Fragment = Symbol('Fragment');
+    var Text = Symbol('Text');
+    var Comment = Symbol('Comment');
     function isVNode(value) {
         return value ? value.__v_isVNode === true : false;
     }
@@ -607,7 +610,11 @@ var Vue = (function (exports) {
      */
     function createVNode(type, props, children) {
         // 通过 bit 位处理 shapeFlag 类型
-        var shapeFlag = isString(type) ? 1 /* ShapeFlags.ELEMENT */ : 0;
+        var shapeFlag = isString(type)
+            ? 1 /* ShapeFlags.ELEMENT */
+            : isObject(type)
+                ? 4 /* ShapeFlags.STATEFUL_COMPONENT */
+                : 0;
         return createBaseVNode(type, props, children, shapeFlag);
     }
     /**
@@ -629,7 +636,10 @@ var Vue = (function (exports) {
         if (children == null) {
             children = null;
         }
-        else if (isArray(children)) ;
+        else if (isArray(children)) {
+            // TODO: array
+            type = 16 /* ShapeFlags.ARRAY_CHILDREN */;
+        }
         else if (typeof children === 'object') ;
         else if (isFunction(children)) ;
         else {
@@ -678,6 +688,9 @@ var Vue = (function (exports) {
         }
     }
 
+    exports.Comment = Comment;
+    exports.Fragment = Fragment;
+    exports.Text = Text;
     exports.computed = computed;
     exports.effect = effect;
     exports.h = h;
