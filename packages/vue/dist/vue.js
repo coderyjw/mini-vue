@@ -545,7 +545,7 @@ var Vue = (function (exports) {
         if (cb && deep) {
             // TODO
             var baseGetter_1 = getter;
-            getter = function () { return baseGetter_1(); };
+            getter = function () { return traverse(baseGetter_1()); };
         }
         // 旧值
         var oldValue = {};
@@ -577,6 +577,18 @@ var Vue = (function (exports) {
         return function () {
             effect.stop();
         };
+    }
+    /**
+     * 依次执行 getter，从而触发依赖收集
+     */
+    function traverse(value) {
+        if (!isObject(value)) {
+            return value;
+        }
+        for (var key in value) {
+            traverse(value[key]);
+        }
+        return value;
     }
 
     exports.computed = computed;

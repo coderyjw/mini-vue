@@ -1,4 +1,4 @@
-import { EMPTY_OBJ, hasChanged } from '@vue/shared'
+import { EMPTY_OBJ, hasChanged, isObject } from '@vue/shared'
 import { isReactive, ReactiveEffect } from '@vue/reactivity'
 import { queuePreFlushCb } from './scheduler'
 
@@ -43,7 +43,7 @@ function doWatch(
   if (cb && deep) {
     // TODO
     const baseGetter = getter
-    getter = () => baseGetter()
+    getter = () => traverse(baseGetter())
   }
 
   // 旧值
@@ -65,17 +65,31 @@ function doWatch(
 
   const effect = new ReactiveEffect(getter, scheduler)
 
-  if (cb) {
-    if (immediate) {
-      job()
-    } else {
-      oldValue = effect.run()
-    }
+if (cb) {
+  if (immediate) {
+    job()
   } else {
-    effect.run()
+    oldValue = effect.run()
   }
+} else {
+  effect.run()
+}
 
   return () => {
     effect.stop()
   }
+}
+
+/**
+ * 依次执行 getter，从而触发依赖收集
+ */
+export function traverse(value: unknown) {
+  if (!isObject(value)) {
+    return value
+  }
+
+  for (const key in value as object) {
+    traverse((value as any)[key])
+  }
+  return value
 }
