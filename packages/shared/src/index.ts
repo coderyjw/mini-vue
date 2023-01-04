@@ -1,4 +1,5 @@
 export * from './shapeFlags'
+export * from './normalizeProp'
 /**
  * 判断是否为一个数组
  */

@@ -3,7 +3,8 @@ import {
   isArray,
   isFunction,
   isString,
-  isObject
+  isObject,
+  normalizeClass
 } from '@vue/shared'
 
 export interface VNode {
@@ -36,6 +37,14 @@ export function createVNode(type, props, children): VNode {
     : isObject(type)
     ? ShapeFlags.STATEFUL_COMPONENT
     : 0
+
+  if (props) {
+    // 处理 class
+    let { class: klass, style } = props
+    if (klass && !isString(klass)) {
+      props.class = normalizeClass(klass)
+    }
+  }
 
   return createBaseVNode(type, props, children, shapeFlag)
 }
