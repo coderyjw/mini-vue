@@ -13,6 +13,7 @@ export interface VNode {
   props: any
   children: any
   shapeFlag: number
+  key: any
 }
 
 export const Fragment = Symbol('Fragment')
@@ -87,4 +88,11 @@ export function normalizeChildren(vnode: VNode, children: unknown) {
   vnode.children = children
   // 按位或赋值
   vnode.shapeFlag |= type
+}
+
+/**
+ * 根据 key || type 判断是否为相同类型节点
+ */
+export function isSameVNodeType(n1: VNode, n2: VNode): boolean {
+  return n1.type === n2.type && n1.key === n2.key
 }

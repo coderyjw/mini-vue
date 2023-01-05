@@ -698,6 +698,12 @@ var Vue = (function (exports) {
         // 按位或赋值
         vnode.shapeFlag |= type;
     }
+    /**
+     * 根据 key || type 判断是否为相同类型节点
+     */
+    function isSameVNodeType(n1, n2) {
+        return n1.type === n2.type && n1.key === n2.key;
+    }
 
     function h(type, propsOrChildren, children) {
         // 获取用户传递的参数数量
@@ -748,7 +754,10 @@ var Vue = (function (exports) {
         /**
          * 解构 options，获取所有的兼容性方法
          */
-        var hostInsert = options.insert, hostPatchProp = options.patchProp, hostCreateElement = options.createElement, hostSetElementText = options.setElementText;
+        var hostInsert = options.insert, hostPatchProp = options.patchProp, hostCreateElement = options.createElement, hostSetElementText = options.setElementText, hostRemove = options.remove;
+        var unmount = function (vnode) {
+            hostRemove(vnode.el);
+        };
         /**
          * Element 的打补丁操作
          */
@@ -801,6 +810,13 @@ var Vue = (function (exports) {
             if (anchor === void 0) { anchor = null; }
             if (oldVNode === newVNode) {
                 return;
+            }
+            /**
+             * 判断是否为相同类型节点
+             */
+            if (oldVNode && !isSameVNodeType(oldVNode, newVNode)) {
+                unmount(oldVNode);
+                oldVNode = null;
             }
             var type = newVNode.type, shapeFlag = newVNode.shapeFlag;
             switch (type) {
@@ -912,6 +928,15 @@ var Vue = (function (exports) {
          */
         setElementText: function (el, text) {
             el.textContent = text;
+        },
+        /**
+         * 删除指定元素
+         */
+        remove: function (child) {
+            var parent = child.parentNode;
+            if (parent) {
+                parent.removeChild(child);
+            }
         }
     };
 
