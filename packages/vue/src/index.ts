@@ -5,5 +5,8 @@ export {
   h,
   Fragment,
   Text,
-  Comment
+  Comment,
+  createRenderer
 } from '@vue/runtime-core'
+
+export { render } from '@vue/runtime-dom'

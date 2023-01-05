@@ -122,6 +122,11 @@ var Vue = (function (exports) {
      * 只读的空对象
      */
     var EMPTY_OBJ = {};
+    var onRE = /^on[^a-z]/;
+    /**
+     * 是否 on 开头
+     */
+    var isOn = function (key) { return onRE.test(key); };
 
     /**
      * 依据 effects 生成 dep 实例
@@ -629,8 +634,8 @@ var Vue = (function (exports) {
     }
 
     var Fragment = Symbol('Fragment');
-    var Text = Symbol('Text');
-    var Comment = Symbol('Comment');
+    var Text$1 = Symbol('Text');
+    var Comment$1 = Symbol('Comment');
     function isVNode(value) {
         return value ? value.__v_isVNode === true : false;
     }
@@ -728,15 +733,162 @@ var Vue = (function (exports) {
         }
     }
 
-    exports.Comment = Comment;
+    /**
+     * 对外暴露的创建渲染器的方法
+     */
+    function createRenderer(options) {
+        return baseCreateRenderer(options);
+    }
+    /**
+     * 生成 renderer 渲染器
+     * @param options 兼容性操作配置对象
+     * @returns
+     */
+    function baseCreateRenderer(options) {
+        /**
+         * 解构 options，获取所有的兼容性方法
+         */
+        var hostInsert = options.insert, hostPatchProp = options.patchProp, hostCreateElement = options.createElement, hostSetElementText = options.setElementText;
+        /**
+         * Element 的打补丁操作
+         */
+        var processElement = function (oldVNode, newVNode, container, anchor) {
+            if (oldVNode == null) {
+                // 挂载操作
+                mountElement(newVNode, container, anchor);
+            }
+        };
+        /**
+         * element 的挂载操作
+         */
+        var mountElement = function (vnode, container, anchor) {
+            var type = vnode.type, props = vnode.props, shapeFlag = vnode.shapeFlag;
+            // 创建 element
+            var el = (vnode.el = hostCreateElement(type));
+            if (shapeFlag & 8 /* ShapeFlags.TEXT_CHILDREN */) {
+                // 设置 文本子节点
+                hostSetElementText(el, vnode.children);
+            }
+            // 处理 props
+            if (props) {
+                // 遍历 props 对象
+                for (var key in props) {
+                    hostPatchProp(el, key, null, props[key]);
+                }
+            }
+            // 插入 el 到指定的位置
+            hostInsert(el, container, anchor);
+        };
+        var patch = function (oldVNode, newVNode, container, anchor) {
+            if (anchor === void 0) { anchor = null; }
+            if (oldVNode === newVNode) {
+                return;
+            }
+            var type = newVNode.type, shapeFlag = newVNode.shapeFlag;
+            switch (type) {
+                case Text:
+                    // TODO: Text
+                    break;
+                case Comment:
+                    // TODO: Comment
+                    break;
+                case Fragment:
+                    // TODO: Fragment
+                    break;
+                default:
+                    if (shapeFlag & 1 /* ShapeFlags.ELEMENT */) {
+                        processElement(oldVNode, newVNode, container, anchor);
+                    }
+            }
+        };
+        /**
+         * 渲染函数
+         */
+        var render = function (vnode, container) {
+            if (vnode == null) ;
+            else {
+                // 打补丁（包括了挂载和更新）
+                patch(container._vnode || null, vnode, container);
+            }
+            container._vnode = vnode;
+        };
+        return {
+            render: render
+        };
+    }
+
+    var doc = document;
+    var nodeOps = {
+        /**
+         * 插入指定元素到指定位置
+         */
+        insert: function (child, parent, anchor) {
+            parent.insertBefore(child, anchor || null);
+        },
+        /**
+         * 创建指定 Element
+         */
+        createElement: function (tag) {
+            var el = doc.createElement(tag);
+            return el;
+        },
+        /**
+         * 为指定的 element 设置 textContent
+         */
+        setElementText: function (el, text) {
+            el.textContent = text;
+        }
+    };
+
+    /**
+     * 为 class 打补丁
+     */
+    function patchClass(el, value) {
+        if (value == null) {
+            el.removeAttribute('class');
+        }
+        else {
+            el.className = value;
+        }
+    }
+
+    /**
+     * 为 prop 进行打补丁操作
+     */
+    var patchProp = function (el, key, prevValue, nextValue) {
+        if (key === 'class') {
+            patchClass(el, nextValue);
+        }
+        else if (key === 'style') ;
+        else if (isOn(key)) ;
+        else ;
+    };
+
+    var rendererOptions = extend({ patchProp: patchProp }, nodeOps);
+    var renderer;
+    function ensureRenderer() {
+        return renderer || (renderer = createRenderer(rendererOptions));
+    }
+    var render = function () {
+        var _a;
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        (_a = ensureRenderer()).render.apply(_a, __spreadArray([], __read(args), false));
+    };
+
+    exports.Comment = Comment$1;
     exports.Fragment = Fragment;
-    exports.Text = Text;
+    exports.Text = Text$1;
     exports.computed = computed;
+    exports.createRenderer = createRenderer;
     exports.effect = effect;
     exports.h = h;
     exports.queuePreFlushCb = queuePreFlushCb;
     exports.reactive = reactive;
     exports.ref = ref;
+    exports.render = render;
     exports.watch = watch;
 
     Object.defineProperty(exports, '__esModule', { value: true });
