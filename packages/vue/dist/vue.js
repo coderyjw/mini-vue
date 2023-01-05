@@ -757,6 +757,10 @@ var Vue = (function (exports) {
                 // 挂载操作
                 mountElement(newVNode, container, anchor);
             }
+            else {
+                // 更新操作
+                patchElement(oldVNode, newVNode);
+            }
         };
         /**
          * element 的挂载操作
@@ -779,6 +783,20 @@ var Vue = (function (exports) {
             // 插入 el 到指定的位置
             hostInsert(el, container, anchor);
         };
+        /**
+         * element 的更新操作
+         */
+        var patchElement = function (oldVNode, newVNode) {
+            // 获取指定的 el
+            var el = (newVNode.el = oldVNode.el);
+            // 新旧 props
+            var oldProps = oldVNode.props || EMPTY_OBJ;
+            var newProps = newVNode.props || EMPTY_OBJ;
+            // 更新子节点
+            patchChildren(oldVNode, newVNode, el);
+            // 更新 props
+            patchProps(el, newVNode, oldProps, newProps);
+        };
         var patch = function (oldVNode, newVNode, container, anchor) {
             if (anchor === void 0) { anchor = null; }
             if (oldVNode === newVNode) {
@@ -799,6 +817,63 @@ var Vue = (function (exports) {
                     if (shapeFlag & 1 /* ShapeFlags.ELEMENT */) {
                         processElement(oldVNode, newVNode, container, anchor);
                     }
+            }
+        };
+        /**
+         * 为子节点打补丁
+         */
+        var patchChildren = function (oldVNode, newVNode, container, anchor) {
+            // 旧节点的 children
+            var c1 = oldVNode && oldVNode.children;
+            // 旧节点的 prevShapeFlag
+            var prevShapeFlag = oldVNode ? oldVNode.shapeFlag : 0;
+            // 新节点的 children
+            var c2 = newVNode.children;
+            // 新节点的 shapeFlag
+            var shapeFlag = newVNode.shapeFlag;
+            // 新子节点为 TEXT_CHILDREN
+            if (shapeFlag & 8 /* ShapeFlags.TEXT_CHILDREN */) {
+                // 新旧子节点不同
+                if (c2 !== c1) {
+                    // 挂载新子节点的文本
+                    hostSetElementText(container, c2);
+                }
+            }
+            else {
+                // 旧子节点为 ARRAY_CHILDREN
+                if (prevShapeFlag & 16 /* ShapeFlags.ARRAY_CHILDREN */) ;
+                else {
+                    // 旧子节点为 TEXT_CHILDREN
+                    if (prevShapeFlag & 8 /* ShapeFlags.TEXT_CHILDREN */) {
+                        // 删除旧的文本
+                        hostSetElementText(container, '');
+                    }
+                }
+            }
+        };
+        /**
+         * 为 props 打补丁
+         */
+        var patchProps = function (el, vnode, oldProps, newProps) {
+            // 新旧 props 不相同时才进行处理
+            if (oldProps !== newProps) {
+                // 遍历新的 props，依次触发 hostPatchProp ，赋值新属性
+                for (var key in newProps) {
+                    var next = newProps[key];
+                    var prev = oldProps[key];
+                    if (next !== prev) {
+                        hostPatchProp(el, key, prev, next);
+                    }
+                }
+                // 存在旧的 props 时
+                if (oldProps !== EMPTY_OBJ) {
+                    // 遍历旧的 props，依次触发 hostPatchProp ，删除不存在于新props 中的旧属性
+                    for (var key in oldProps) {
+                        if (!(key in newProps)) {
+                            hostPatchProp(el, key, oldProps[key], null);
+                        }
+                    }
+                }
             }
         };
         /**
