@@ -896,7 +896,12 @@ var Vue = (function (exports) {
          * 渲染函数
          */
         var render = function (vnode, container) {
-            if (vnode == null) ;
+            if (vnode == null) {
+                // TODO: 卸载
+                if (container._vnode) {
+                    unmount(container._vnode);
+                }
+            }
             else {
                 // 打补丁（包括了挂载和更新）
                 patch(container._vnode || null, vnode, container);

@@ -227,15 +227,19 @@ function baseCreateRenderer(options: RendererOptions): any {
   /**
    * 渲染函数
    */
-  const render = (vnode, container) => {
-    if (vnode == null) {
-      // TODO: 卸载
-    } else {
-      // 打补丁（包括了挂载和更新）
-      patch(container._vnode || null, vnode, container)
+const render = (vnode, container) => {
+  if (vnode == null) {
+    // TODO: 卸载
+    if (container._vnode) {
+      unmount(container._vnode)
     }
-    container._vnode = vnode
+  } else {
+    // 打补丁（包括了挂载和更新）
+    patch(container._vnode || null, vnode, container)
   }
+  container._vnode = vnode
+}
+
   return {
     render
   }
