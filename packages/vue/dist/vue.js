@@ -980,13 +980,46 @@ var Vue = (function (exports) {
     }
 
     /**
+     * 为 style 属性进行打补丁
+     */
+    function patchStyle(el, prev, next) {
+        // 获取 style 对象
+        var style = el.style;
+        // 判断新的样式是否为纯字符串
+        var isCssString = isString(next);
+        if (next && !isCssString) {
+            // 赋值新样式
+            for (var key in next) {
+                setStyle(style, key, next[key]);
+            }
+            // 清理旧样式
+            if (prev && !isString(prev)) {
+                for (var key in prev) {
+                    if (next[key] == null) {
+                        setStyle(style, key, '');
+                    }
+                }
+            }
+        }
+    }
+    /**
+     * 赋值样式
+     */
+    function setStyle(style, name, val) {
+        style[name] = val;
+    }
+
+    /**
      * 为 prop 进行打补丁操作
      */
     var patchProp = function (el, key, prevValue, nextValue) {
         if (key === 'class') {
             patchClass(el, nextValue);
         }
-        else if (key === 'style') ;
+        else if (key === 'style') {
+            // TODO: style
+            patchStyle(el, prevValue, nextValue);
+        }
         else if (isOn(key)) ;
         else if (shouldSetAsProp(el, key)) {
             // 通过 DOM Properties 指定
