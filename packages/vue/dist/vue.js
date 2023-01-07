@@ -754,7 +754,7 @@ var Vue = (function (exports) {
         /**
          * 解构 options，获取所有的兼容性方法
          */
-        var hostInsert = options.insert, hostPatchProp = options.patchProp, hostCreateElement = options.createElement, hostSetElementText = options.setElementText, hostRemove = options.remove;
+        var hostInsert = options.insert, hostPatchProp = options.patchProp, hostCreateElement = options.createElement, hostSetElementText = options.setElementText, hostRemove = options.remove, hostCreateText = options.createText, hostSetText = options.setText, hostCreateComment = options.createComment;
         var unmount = function (vnode) {
             hostRemove(vnode.el);
         };
@@ -769,6 +769,40 @@ var Vue = (function (exports) {
             else {
                 // 更新操作
                 patchElement(oldVNode, newVNode);
+            }
+        };
+        /**
+         * Text 的打补丁操作
+         */
+        var processText = function (oldVNode, newVNode, container, anchor) {
+            // 不存在旧的节点，则为 挂载 操作
+            if (oldVNode == null) {
+                // 生成节点
+                newVNode.el = hostCreateText(newVNode.children);
+                // 挂载
+                hostInsert(newVNode.el, container, anchor);
+            }
+            // 存在旧的节点，则为 更新 操作
+            else {
+                var el = (newVNode.el = oldVNode.el);
+                if (newVNode.children !== oldVNode.children) {
+                    hostSetText(el, newVNode.children);
+                }
+            }
+        };
+        /**
+         * Comment 的打补丁操作
+         */
+        var processCommentNode = function (oldVNode, newVNode, container, anchor) {
+            if (oldVNode == null) {
+                // 生成节点
+                newVNode.el = hostCreateComment(newVNode.children || '');
+                // 挂载
+                hostInsert(newVNode.el, container, anchor);
+            }
+            else {
+                // 无更新
+                newVNode.el = oldVNode.el;
             }
         };
         /**
@@ -821,10 +855,13 @@ var Vue = (function (exports) {
             var type = newVNode.type, shapeFlag = newVNode.shapeFlag;
             switch (type) {
                 case Text:
-                    // TODO: Text
+                    // Text
+                    processText(oldVNode, newVNode, container, anchor);
                     break;
+                // patch 方法中 switch 逻辑
                 case Comment:
-                    // TODO: Comment
+                    // Comment
+                    processCommentNode(oldVNode, newVNode, container, anchor);
                     break;
                 case Fragment:
                     // TODO: Fragment
@@ -942,7 +979,21 @@ var Vue = (function (exports) {
             if (parent) {
                 parent.removeChild(child);
             }
-        }
+        },
+        /**
+         * 创建 Text 节点
+         */
+        createText: function (text) { return doc.createTextNode(text); },
+        /**
+         * 设置 text
+         */
+        setText: function (node, text) {
+            node.nodeValue = text;
+        },
+        /**
+         * 创建 Comment 节点
+         */
+        createComment: function (text) { return doc.createComment(text); }
     };
 
     /**

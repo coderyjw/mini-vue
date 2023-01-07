@@ -26,6 +26,19 @@ export interface RendererOptions {
    * 卸载指定dom
    */
   remove(el): void
+
+  /**
+   * 创建 Text 节点
+   */
+  createText(text: string)
+  /**
+   * 设置 text
+   */
+  setText(node, text): void
+  /**
+   * 设置 text
+   */
+  createComment(text: string)
 }
 
 /**
@@ -49,7 +62,10 @@ function baseCreateRenderer(options: RendererOptions): any {
     patchProp: hostPatchProp,
     createElement: hostCreateElement,
     setElementText: hostSetElementText,
-    remove: hostRemove
+    remove: hostRemove,
+    createText: hostCreateText,
+    setText: hostSetText,
+    createComment: hostCreateComment
   } = options
 
   const unmount = vnode => {
@@ -66,6 +82,41 @@ function baseCreateRenderer(options: RendererOptions): any {
     } else {
       // 更新操作
       patchElement(oldVNode, newVNode)
+    }
+  }
+
+  /**
+   * Text 的打补丁操作
+   */
+  const processText = (oldVNode, newVNode, container, anchor) => {
+    // 不存在旧的节点，则为 挂载 操作
+    if (oldVNode == null) {
+      // 生成节点
+      newVNode.el = hostCreateText(newVNode.children as string)
+      // 挂载
+      hostInsert(newVNode.el, container, anchor)
+    }
+    // 存在旧的节点，则为 更新 操作
+    else {
+      const el = (newVNode.el = oldVNode.el!)
+      if (newVNode.children !== oldVNode.children) {
+        hostSetText(el, newVNode.children as string)
+      }
+    }
+  }
+
+  /**
+   * Comment 的打补丁操作
+   */
+  const processCommentNode = (oldVNode, newVNode, container, anchor) => {
+    if (oldVNode == null) {
+      // 生成节点
+      newVNode.el = hostCreateComment((newVNode.children as string) || '')
+      // 挂载
+      hostInsert(newVNode.el, container, anchor)
+    } else {
+      // 无更新
+      newVNode.el = oldVNode.el
     }
   }
 
@@ -131,10 +182,13 @@ function baseCreateRenderer(options: RendererOptions): any {
     const { type, shapeFlag } = newVNode
     switch (type) {
       case Text:
-        // TODO: Text
+        // Text
+        processText(oldVNode, newVNode, container, anchor)
         break
+      // patch 方法中 switch 逻辑
       case Comment:
-        // TODO: Comment
+        // Comment
+        processCommentNode(oldVNode, newVNode, container, anchor)
         break
       case Fragment:
         // TODO: Fragment
@@ -227,18 +281,18 @@ function baseCreateRenderer(options: RendererOptions): any {
   /**
    * 渲染函数
    */
-const render = (vnode, container) => {
-  if (vnode == null) {
-    // TODO: 卸载
-    if (container._vnode) {
-      unmount(container._vnode)
+  const render = (vnode, container) => {
+    if (vnode == null) {
+      // TODO: 卸载
+      if (container._vnode) {
+        unmount(container._vnode)
+      }
+    } else {
+      // 打补丁（包括了挂载和更新）
+      patch(container._vnode || null, vnode, container)
     }
-  } else {
-    // 打补丁（包括了挂载和更新）
-    patch(container._vnode || null, vnode, container)
+    container._vnode = vnode
   }
-  container._vnode = vnode
-}
 
   return {
     render
