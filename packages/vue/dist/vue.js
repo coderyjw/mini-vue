@@ -739,6 +739,72 @@ var Vue = (function (exports) {
         }
     }
 
+    var uid = 0;
+    /**
+     * 创建组件实例
+     */
+    function createComponentInstance(vnode) {
+        var type = vnode.type;
+        var instance = {
+            uid: uid++,
+            vnode: vnode,
+            type: type,
+            subTree: null,
+            effect: null,
+            update: null,
+            render: null // 组件内的 render 函数
+        };
+        return instance;
+    }
+    /**
+     * 规范化组件实例数据
+     */
+    function setupComponent(instance) {
+        // 为 render 赋值
+        var setupResult = setupStatefulComponent(instance);
+        return setupResult;
+    }
+    function setupStatefulComponent(instance) {
+        finishComponentSetup(instance);
+    }
+    function finishComponentSetup(instance) {
+        var Component = instance.type;
+        instance.render = Component.render;
+    }
+
+    /**
+     * 解析 render 函数的返回值
+     */
+    function renderComponentRoot(instance) {
+        var vnode = instance.vnode, render = instance.render;
+        var result;
+        try {
+            // 解析到状态组件
+            if (vnode.shapeFlag & 4 /* ShapeFlags.STATEFUL_COMPONENT */) {
+                // 获取到 result 返回值
+                result = normalizeVNode(render());
+            }
+        }
+        catch (err) {
+            console.error(err);
+        }
+        return result;
+    }
+    /**
+     * 标准化 VNode
+     */
+    function normalizeVNode(child) {
+        if (typeof child === 'object') {
+            return cloneIfMounted(child);
+        }
+    }
+    /**
+     * clone VNode
+     */
+    function cloneIfMounted(child) {
+        return child;
+    }
+
     /**
      * 对外暴露的创建渲染器的方法
      */
@@ -826,6 +892,39 @@ var Vue = (function (exports) {
             // 插入 el 到指定的位置
             hostInsert(el, container, anchor);
         };
+        var mountComponent = function (initialVNode, container, anchor) {
+            // 生成组件实例
+            initialVNode.component = createComponentInstance(initialVNode);
+            // 浅拷贝，绑定同一块内存空间
+            var instance = initialVNode.component;
+            // 标准化组件实例数据
+            setupComponent(instance);
+            // 设置组件渲染
+            setupRenderEffect(instance, initialVNode, container, anchor);
+        };
+        /**
+         * 设置组件渲染
+         */
+        var setupRenderEffect = function (instance, initialVNode, container, anchor) {
+            // 组件挂载和更新的方法
+            var componentUpdateFn = function () {
+                // 当前处于 mounted 之前，即执行 挂载 逻辑
+                if (!instance.isMounted) {
+                    // 从 render 中获取需要渲染的内容
+                    var subTree = (instance.subTree = renderComponentRoot(instance));
+                    // 通过 patch 对 subTree，进行打补丁。即：渲染组件
+                    patch(null, subTree, container, anchor);
+                    // 把组件根节点的 el，作为组件的 el
+                    initialVNode.el = subTree.el;
+                }
+            };
+            // 创建包含 scheduler 的 effect 实例
+            var effect = (instance.effect = new ReactiveEffect(componentUpdateFn, function () { return queuePreFlushCb(update); }));
+            // 生成 update 函数
+            var update = (instance.update = function () { return effect.run(); });
+            // 触发 update 函数，本质上触发的是 componentUpdateFn
+            update();
+        };
         /**
          * element 的更新操作
          */
@@ -839,6 +938,15 @@ var Vue = (function (exports) {
             patchChildren(oldVNode, newVNode, el);
             // 更新 props
             patchProps(el, newVNode, oldProps, newProps);
+        };
+        /**
+         * 组件的打补丁操作
+         */
+        var processComponent = function (oldVNode, newVNode, container, anchor) {
+            if (oldVNode == null) {
+                // 挂载
+                mountComponent(newVNode, container, anchor);
+            }
         };
         var patch = function (oldVNode, newVNode, container, anchor) {
             if (anchor === void 0) { anchor = null; }
@@ -869,6 +977,10 @@ var Vue = (function (exports) {
                 default:
                     if (shapeFlag & 1 /* ShapeFlags.ELEMENT */) {
                         processElement(oldVNode, newVNode, container, anchor);
+                    }
+                    else if (shapeFlag & 6 /* ShapeFlags.COMPONENT */) {
+                        // 组件
+                        processComponent(oldVNode, newVNode, container, anchor);
                     }
             }
         };
