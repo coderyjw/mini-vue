@@ -988,6 +988,23 @@ var Vue = (function (exports) {
                     }
                     // 把组件根节点的 el，作为组件的 el
                     initialVNode.el = subTree.el;
+                    // 修改 mounted 状态
+                    instance.isMounted = true;
+                }
+                else {
+                    var next = instance.next, vnode = instance.vnode;
+                    if (!next) {
+                        next = vnode;
+                    }
+                    // 获取下一次的 subTree
+                    var nextTree = renderComponentRoot(instance);
+                    // 保存对应的 subTree，以便进行更新操作
+                    var prevTree = instance.subTree;
+                    instance.subTree = nextTree;
+                    // 通过 patch 进行更新操作
+                    patch(prevTree, nextTree, container, anchor);
+                    // 更新 next
+                    next.el = nextTree.el;
                 }
             };
             // 创建包含 scheduler 的 effect 实例
