@@ -739,6 +739,27 @@ var Vue = (function (exports) {
         }
     }
 
+    /**
+     * 注册 hook
+     */
+    function injectHook(type, hook, target) {
+        // 将 hook 注册到 组件实例中
+        if (target) {
+            target[type] = hook;
+            return hook;
+        }
+    }
+    /**
+     * 创建一个指定的 hook
+     * @param lifecycle 指定的 hook enum
+     * @returns 注册 hook 的方法
+     */
+    var createHook = function (lifecycle) {
+        return function (hook, target) { return injectHook(lifecycle, hook, target); };
+    };
+    var onBeforeMount = createHook("bm" /* LifecycleHooks.BEFORE_MOUNT */);
+    var onMounted = createHook("m" /* LifecycleHooks.MOUNTED */);
+
     var uid = 0;
     /**
      * 创建组件实例
@@ -752,7 +773,13 @@ var Vue = (function (exports) {
             subTree: null,
             effect: null,
             update: null,
-            render: null // 组件内的 render 函数
+            render: null,
+            // 生命周期相关
+            isMounted: false,
+            bc: null,
+            c: null,
+            bm: null,
+            m: null // mounted
         };
         return instance;
     }
@@ -768,7 +795,11 @@ var Vue = (function (exports) {
         finishComponentSetup(instance);
     }
     function applyOptions(instance) {
-        var dataOptions = instance.type.data;
+        var _a = instance.type, dataOptions = _a.data, beforeCreate = _a.beforeCreate, created = _a.created, beforeMount = _a.beforeMount, mounted = _a.mounted;
+        // hooks
+        if (beforeCreate) {
+            callHook(beforeCreate);
+        }
         // 存在 data 选项时
         if (dataOptions) {
             // 触发 dataOptions 函数，拿到 data 对象
@@ -779,12 +810,28 @@ var Vue = (function (exports) {
                 instance.data = reactive(data);
             }
         }
+        // hooks
+        if (created) {
+            callHook(created);
+        }
+        function registerLifecycleHook(register, hook) {
+            register(hook, instance);
+        }
+        // 注册 hooks
+        registerLifecycleHook(onBeforeMount, beforeMount);
+        registerLifecycleHook(onMounted, mounted);
     }
     function finishComponentSetup(instance) {
         var Component = instance.type;
         instance.render = Component.render;
         // 改变 options 中的 this 指向
         applyOptions(instance);
+    }
+    /**
+     * 触发 hooks
+     */
+    function callHook(hook) {
+        hook();
     }
 
     /**
@@ -925,10 +972,20 @@ var Vue = (function (exports) {
             var componentUpdateFn = function () {
                 // 当前处于 mounted 之前，即执行 挂载 逻辑
                 if (!instance.isMounted) {
+                    // 获取 hook
+                    var bm = instance.bm, m = instance.m;
+                    // beforeMount hook
+                    if (bm) {
+                        bm();
+                    }
                     // 从 render 中获取需要渲染的内容
                     var subTree = (instance.subTree = renderComponentRoot(instance));
                     // 通过 patch 对 subTree，进行打补丁。即：渲染组件
                     patch(null, subTree, container, anchor);
+                    // mounted hook
+                    if (m) {
+                        m();
+                    }
                     // 把组件根节点的 el，作为组件的 el
                     initialVNode.el = subTree.el;
                 }
