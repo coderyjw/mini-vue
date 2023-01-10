@@ -1,4 +1,4 @@
-import { isObject } from '@vue/shared'
+import { isObject, isFunction } from '@vue/shared'
 import { reactive } from '@vue/reactivity'
 import { onBeforeMount, onMounted } from './apiLifecycle'
 /**
@@ -48,6 +48,23 @@ export function setupComponent(instance) {
 }
 
 function setupStatefulComponent(instance) {
+  const Component = instance.type
+  const { setup } = Component
+  // 存在 setup ，则直接获取 setup 函数的返回值即可
+  if (setup) {
+    const setupResult = setup()
+    handleSetupResult(instance, setupResult)
+  } else {
+    // 获取组件实例
+    finishComponentSetup(instance)
+  }
+}
+
+export function handleSetupResult(instance, setupResult) {
+  // 存在 setupResult，并且它是一个函数，则 setupResult 就是需要渲染的 render
+  if (isFunction(setupResult)) {
+    instance.render = setupResult
+  }
   finishComponentSetup(instance)
 }
 
@@ -93,7 +110,10 @@ function applyOptions(instance: any) {
 export function finishComponentSetup(instance) {
   const Component = instance.type
 
-  instance.render = Component.render
+  // 组件不存在 render 时，才需要重新赋值
+  if (!instance.render) {
+    instance.render = Component.render
+  }
 
   // 改变 options 中的 this 指向
   applyOptions(instance)
