@@ -798,7 +798,7 @@ var Vue = (function (exports) {
         var _a = instance.type, dataOptions = _a.data, beforeCreate = _a.beforeCreate, created = _a.created, beforeMount = _a.beforeMount, mounted = _a.mounted;
         // hooks
         if (beforeCreate) {
-            callHook(beforeCreate);
+            callHook(beforeCreate, instance.data);
         }
         // 存在 data 选项时
         if (dataOptions) {
@@ -812,10 +812,10 @@ var Vue = (function (exports) {
         }
         // hooks
         if (created) {
-            callHook(created);
+            callHook(created, instance.data);
         }
         function registerLifecycleHook(register, hook) {
-            register(hook, instance);
+            register(hook === null || hook === void 0 ? void 0 : hook.bind(instance.data), instance);
         }
         // 注册 hooks
         registerLifecycleHook(onBeforeMount, beforeMount);
@@ -830,8 +830,8 @@ var Vue = (function (exports) {
     /**
      * 触发 hooks
      */
-    function callHook(hook) {
-        hook();
+    function callHook(hook, proxy) {
+        hook.bind(proxy)();
     }
 
     /**
