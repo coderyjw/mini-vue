@@ -670,7 +670,8 @@ var Vue = (function (exports) {
             __v_isVNode: true,
             type: type,
             props: props,
-            shapeFlag: shapeFlag
+            shapeFlag: shapeFlag,
+            key: (props === null || props === void 0 ? void 0 : props.key) || null
         };
         normalizeChildren(vnode, children);
         return vnode;
@@ -737,6 +738,39 @@ var Vue = (function (exports) {
             // 触发 createVNode 方法，创建 VNode 实例
             return createVNode(type, propsOrChildren, children);
         }
+    }
+
+    /**
+     * 解析 render 函数的返回值
+     */
+    function renderComponentRoot(instance) {
+        var vnode = instance.vnode, render = instance.render, data = instance.data;
+        var result;
+        try {
+            // 解析到状态组件
+            if (vnode.shapeFlag & 4 /* ShapeFlags.STATEFUL_COMPONENT */) {
+                // 获取到 result 返回值，如果 render 中使用了 this，则需要修改 this 指向
+                result = normalizeVNode(render.call(data));
+            }
+        }
+        catch (err) {
+            console.error(err);
+        }
+        return result;
+    }
+    /**
+     * 标准化 VNode
+     */
+    function normalizeVNode(child) {
+        if (typeof child === 'object') {
+            return cloneIfMounted(child);
+        }
+    }
+    /**
+     * clone VNode
+     */
+    function cloneIfMounted(child) {
+        return child;
     }
 
     /**
@@ -855,39 +889,6 @@ var Vue = (function (exports) {
     }
 
     /**
-     * 解析 render 函数的返回值
-     */
-    function renderComponentRoot(instance) {
-        var vnode = instance.vnode, render = instance.render, data = instance.data;
-        var result;
-        try {
-            // 解析到状态组件
-            if (vnode.shapeFlag & 4 /* ShapeFlags.STATEFUL_COMPONENT */) {
-                // 获取到 result 返回值，如果 render 中使用了 this，则需要修改 this 指向
-                result = normalizeVNode(render.call(data));
-            }
-        }
-        catch (err) {
-            console.error(err);
-        }
-        return result;
-    }
-    /**
-     * 标准化 VNode
-     */
-    function normalizeVNode(child) {
-        if (typeof child === 'object') {
-            return cloneIfMounted(child);
-        }
-    }
-    /**
-     * clone VNode
-     */
-    function cloneIfMounted(child) {
-        return child;
-    }
-
-    /**
      * 对外暴露的创建渲染器的方法
      */
     function createRenderer(options) {
@@ -964,6 +965,10 @@ var Vue = (function (exports) {
                 // 设置 文本子节点
                 hostSetElementText(el, vnode.children);
             }
+            else if (shapeFlag & 16 /* ShapeFlags.ARRAY_CHILDREN */) {
+                // 设置 Array 子节点
+                mountChildren(vnode.children, el, anchor);
+            }
             // 处理 props
             if (props) {
                 // 遍历 props 对象
@@ -973,6 +978,11 @@ var Vue = (function (exports) {
             }
             // 插入 el 到指定的位置
             hostInsert(el, container, anchor);
+        };
+        var mountChildren = function (children, container, anchor) {
+            for (var i = 0; i < children.length; i++) {
+                patch(null, children[i], container, anchor);
+            }
         };
         var mountComponent = function (initialVNode, container, anchor) {
             // 生成组件实例
@@ -1049,6 +1059,42 @@ var Vue = (function (exports) {
             patchProps(el, newVNode, oldProps, newProps);
         };
         /**
+         * diff
+         */
+        var patchKeyedChildren = function (oldChildren, newChildren, container, parentAnchor) {
+            /**
+             * 索引
+             */
+            var i = 0;
+            /**
+             * 新的子节点的长度
+             */
+            var newChildrenLength = newChildren.length;
+            /**
+             * 旧的子节点最大（最后一个）下标
+             */
+            var oldChildrenEnd = oldChildren.length - 1;
+            /**
+             * 新的子节点最大（最后一个）下标
+             */
+            var newChildrenEnd = newChildrenLength - 1;
+            // 1. 自前向后的 diff 对比。经过该循环之后，从前开始的相同 vnode 将被处理
+            while (i <= oldChildrenEnd && i <= newChildrenEnd) {
+                var oldVNode = oldChildren[i];
+                var newVNode = normalizeVNode(newChildren[i]);
+                // 如果 oldVNode 和 newVNode 被认为是同一个 vnode，则直接 patch 即可
+                if (isSameVNodeType(oldVNode, newVNode)) {
+                    patch(oldVNode, newVNode, container, null);
+                }
+                // 如果不被认为是同一个 vnode，则直接跳出循环
+                else {
+                    break;
+                }
+                // 下标自增
+                i++;
+            }
+        };
+        /**
          * 组件的打补丁操作
          */
         var processComponent = function (oldVNode, newVNode, container, anchor) {
@@ -1115,7 +1161,13 @@ var Vue = (function (exports) {
             }
             else {
                 // 旧子节点为 ARRAY_CHILDREN
-                if (prevShapeFlag & 16 /* ShapeFlags.ARRAY_CHILDREN */) ;
+                if (prevShapeFlag & 16 /* ShapeFlags.ARRAY_CHILDREN */) {
+                    // 新子节点也为 ARRAY_CHILDREN
+                    if (shapeFlag & 16 /* ShapeFlags.ARRAY_CHILDREN */) {
+                        //  这里要进行 diff 运算
+                        patchKeyedChildren(c1, c2, container);
+                    }
+                }
                 else {
                     // 旧子节点为 TEXT_CHILDREN
                     if (prevShapeFlag & 8 /* ShapeFlags.TEXT_CHILDREN */) {

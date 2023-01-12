@@ -1,5 +1,6 @@
 import { ShapeFlags } from 'packages/shared/src/shapeFlags'
 import { Fragment, isSameVNodeType } from './vnode'
+import { normalizeVNode } from './componentRenderUtils'
 import { EMPTY_OBJ } from '@vue/shared'
 import { createComponentInstance, setupComponent } from './component'
 import { queuePreFlushCb } from './scheduler'
@@ -136,7 +137,8 @@ function baseCreateRenderer(options: RendererOptions): any {
       // 设置 文本子节点
       hostSetElementText(el, vnode.children as string)
     } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-      // TODO: 设置 Array 子节点
+      // 设置 Array 子节点
+      mountChildren(vnode.children, el, anchor)
     }
 
     // 处理 props
@@ -149,6 +151,12 @@ function baseCreateRenderer(options: RendererOptions): any {
 
     // 插入 el 到指定的位置
     hostInsert(el, container, anchor)
+  }
+
+  const mountChildren = (children, container, anchor) => {
+    for (let i = 0; i < children.length; i++) {
+      patch(null, children[i], container, anchor)
+    }
   }
 
   const mountComponent = (initialVNode, container, anchor) => {
@@ -249,6 +257,49 @@ function baseCreateRenderer(options: RendererOptions): any {
   }
 
   /**
+   * diff
+   */
+  const patchKeyedChildren = (
+    oldChildren,
+    newChildren,
+    container,
+    parentAnchor
+  ) => {
+    /**
+     * 索引
+     */
+    let i = 0
+    /**
+     * 新的子节点的长度
+     */
+    const newChildrenLength = newChildren.length
+    /**
+     * 旧的子节点最大（最后一个）下标
+     */
+    let oldChildrenEnd = oldChildren.length - 1
+    /**
+     * 新的子节点最大（最后一个）下标
+     */
+    let newChildrenEnd = newChildrenLength - 1
+
+    // 1. 自前向后的 diff 对比。经过该循环之后，从前开始的相同 vnode 将被处理
+    while (i <= oldChildrenEnd && i <= newChildrenEnd) {
+      const oldVNode = oldChildren[i]
+      const newVNode = normalizeVNode(newChildren[i])
+      // 如果 oldVNode 和 newVNode 被认为是同一个 vnode，则直接 patch 即可
+      if (isSameVNodeType(oldVNode, newVNode)) {
+        patch(oldVNode, newVNode, container, null)
+      }
+      // 如果不被认为是同一个 vnode，则直接跳出循环
+      else {
+        break
+      }
+      // 下标自增
+      i++
+    }
+  }
+
+  /**
    * 组件的打补丁操作
    */
   const processComponent = (oldVNode, newVNode, container, anchor) => {
@@ -325,7 +376,8 @@ function baseCreateRenderer(options: RendererOptions): any {
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         // 新子节点也为 ARRAY_CHILDREN
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-          // TODO: 这里要进行 diff 运算
+          //  这里要进行 diff 运算
+          patchKeyedChildren(c1, c2, container, anchor)
         }
         // 新子节点不为 ARRAY_CHILDREN，则直接卸载旧子节点
         else {
