@@ -297,6 +297,19 @@ function baseCreateRenderer(options: RendererOptions): any {
       // 下标自增
       i++
     }
+
+// 2. 自后向前的 diff 对比。经过该循环之后，从后开始的相同 vnode 将被处理
+while (i <= oldChildrenEnd && i <= newChildrenEnd) {
+  const oldVNode = oldChildren[oldChildrenEnd]
+  const newVNode = normalizeVNode(newChildren[newChildrenEnd])
+  if (isSameVNodeType(oldVNode, newVNode)) {
+    patch(oldVNode, newVNode, container, null)
+  } else {
+    break
+  }
+  oldChildrenEnd--
+  newChildrenEnd--
+}
   }
 
   /**
