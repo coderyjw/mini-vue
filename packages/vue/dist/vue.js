@@ -1054,7 +1054,7 @@ var Vue = (function (exports) {
             var oldProps = oldVNode.props || EMPTY_OBJ;
             var newProps = newVNode.props || EMPTY_OBJ;
             // 更新子节点
-            patchChildren(oldVNode, newVNode, el);
+            patchChildren(oldVNode, newVNode, el, null);
             // 更新 props
             patchProps(el, newVNode, oldProps, newProps);
         };
@@ -1105,6 +1105,17 @@ var Vue = (function (exports) {
                 }
                 oldChildrenEnd--;
                 newChildrenEnd--;
+            }
+            // 3. 新节点多余旧节点时的 diff 比对。
+            if (i > oldChildrenEnd) {
+                if (i <= newChildrenEnd) {
+                    var nextPos = newChildrenEnd + 1;
+                    var anchor = nextPos < newChildrenLength ? newChildren[nextPos].el : parentAnchor;
+                    while (i <= newChildrenEnd) {
+                        patch(null, normalizeVNode(newChildren[i]), container, anchor);
+                        i++;
+                    }
+                }
             }
         };
         /**
@@ -1178,7 +1189,7 @@ var Vue = (function (exports) {
                     // 新子节点也为 ARRAY_CHILDREN
                     if (shapeFlag & 16 /* ShapeFlags.ARRAY_CHILDREN */) {
                         //  这里要进行 diff 运算
-                        patchKeyedChildren(c1, c2, container);
+                        patchKeyedChildren(c1, c2, container, anchor);
                     }
                 }
                 else {

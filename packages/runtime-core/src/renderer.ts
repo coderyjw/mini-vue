@@ -298,18 +298,31 @@ function baseCreateRenderer(options: RendererOptions): any {
       i++
     }
 
-// 2. 自后向前的 diff 对比。经过该循环之后，从后开始的相同 vnode 将被处理
-while (i <= oldChildrenEnd && i <= newChildrenEnd) {
-  const oldVNode = oldChildren[oldChildrenEnd]
-  const newVNode = normalizeVNode(newChildren[newChildrenEnd])
-  if (isSameVNodeType(oldVNode, newVNode)) {
-    patch(oldVNode, newVNode, container, null)
-  } else {
-    break
-  }
-  oldChildrenEnd--
-  newChildrenEnd--
-}
+    // 2. 自后向前的 diff 对比。经过该循环之后，从后开始的相同 vnode 将被处理
+    while (i <= oldChildrenEnd && i <= newChildrenEnd) {
+      const oldVNode = oldChildren[oldChildrenEnd]
+      const newVNode = normalizeVNode(newChildren[newChildrenEnd])
+      if (isSameVNodeType(oldVNode, newVNode)) {
+        patch(oldVNode, newVNode, container, null)
+      } else {
+        break
+      }
+      oldChildrenEnd--
+      newChildrenEnd--
+    }
+
+    // 3. 新节点多余旧节点时的 diff 比对。
+    if (i > oldChildrenEnd) {
+      if (i <= newChildrenEnd) {
+        const nextPos = newChildrenEnd + 1
+        const anchor =
+          nextPos < newChildrenLength ? newChildren[nextPos].el : parentAnchor
+        while (i <= newChildrenEnd) {
+          patch(null, normalizeVNode(newChildren[i]), container, anchor)
+          i++
+        }
+      }
+    }
   }
 
   /**
