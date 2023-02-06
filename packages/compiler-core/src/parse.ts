@@ -20,17 +20,11 @@ const enum TagType {
  * @param content tempalte 模板
  * @returns
  */
-/**
- * 基础的 parse 方法，生成 AST
- * @param content tempalte 模板
- * @returns
- */
 export function baseParse(content: string) {
   // 创建 parser 对象，未解析器的上下文对象
   const context = createParserContext(content)
   const children = parseChildren(context, [])
-  console.log(children)
-  return {}
+  return createRoot(children)
 }
 
 /**
@@ -251,4 +245,16 @@ function parseTextData(context: ParserContext, length: number): string {
   advanceBy(context, length)
   // 返回获取到的文本
   return rawText
+}
+
+/**
+ * 生成 root 节点
+ */
+export function createRoot(children) {
+  return {
+    type: NodeTypes.ROOT,
+    children,
+    // loc：位置，这个属性并不影响渲染，但是它必须存在，否则会报错。所以我们给了他一个 {}
+    loc: {}
+  }
 }

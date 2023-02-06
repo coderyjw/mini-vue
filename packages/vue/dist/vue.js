@@ -1614,17 +1614,11 @@ var Vue = (function (exports) {
      * @param content tempalte 模板
      * @returns
      */
-    /**
-     * 基础的 parse 方法，生成 AST
-     * @param content tempalte 模板
-     * @returns
-     */
     function baseParse(content) {
         // 创建 parser 对象，未解析器的上下文对象
         var context = createParserContext(content);
         var children = parseChildren(context, []);
-        console.log(children);
-        return {};
+        return createRoot(children);
     }
     /**
      * 创建解析器上下文
@@ -1814,10 +1808,21 @@ var Vue = (function (exports) {
         // 返回获取到的文本
         return rawText;
     }
+    /**
+     * 生成 root 节点
+     */
+    function createRoot(children) {
+        return {
+            type: 0 /* NodeTypes.ROOT */,
+            children: children,
+            // loc：位置，这个属性并不影响渲染，但是它必须存在，否则会报错。所以我们给了他一个 {}
+            loc: {}
+        };
+    }
 
     function baseCompile(template, options) {
         var ast = baseParse(template);
-        console.log(JSON.stringify(ast));
+        console.log(JSON.stringify(ast), ast);
         return {};
     }
 
