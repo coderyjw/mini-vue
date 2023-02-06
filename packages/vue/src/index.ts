@@ -9,4 +9,4 @@ export {
   createRenderer
 } from '@vue/runtime-core'
 
-export { render } from '@vue/runtime-dom'
+export { render, compile } from '@vue/runtime-dom'

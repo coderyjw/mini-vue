@@ -1609,6 +1609,36 @@ var Vue = (function (exports) {
         return key in el;
     }
 
+    /**
+     * 基础的 parse 方法，生成 AST
+     * @param content tempalte 模板
+     * @returns
+     */
+    function baseParse(content) {
+        // 创建 parser 对象，未解析器的上下文对象
+        var context = createParserContext(content);
+        console.log(context);
+        return {};
+    }
+    /**
+     * 创建解析器上下文
+     */
+    function createParserContext(content) {
+        // 合成 context 上下文对象
+        return {
+            source: content
+        };
+    }
+
+    function baseCompile(template, options) {
+        var ast = baseParse(template);
+        console.log(JSON.stringify(ast));
+        return {};
+    }
+
+    function compile(template, options) {
+        return baseCompile(template);
+    }
     var rendererOptions = extend({ patchProp: patchProp }, nodeOps);
     var renderer;
     function ensureRenderer() {
@@ -1626,6 +1656,7 @@ var Vue = (function (exports) {
     exports.Comment = Comment$1;
     exports.Fragment = Fragment;
     exports.Text = Text$1;
+    exports.compile = compile;
     exports.computed = computed;
     exports.createRenderer = createRenderer;
     exports.effect = effect;
